@@ -52,7 +52,7 @@ END:VCALENDAR
 
 导入到 Windows 日历程序如下图所示：
 
-<img src="assets/import-to-window-calendar.png" style="zoom:85%; box-shadow: 0 0 20px rgba(0, 0, 0, .25);" />
+<img src="import-to-window-calendar.png" style="zoom:85%; box-shadow: 0 0 20px rgba(0, 0, 0, .25);" />
 
 ### 2 API
 
