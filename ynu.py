@@ -5,9 +5,9 @@ from fake_useragent import UserAgent
 from api import ClassScheduleResolver
 
 class YNUGraduateClassScheduleResolver(ClassScheduleResolver):
-
-    def __init__(self):
+    def __init__(self, cookies):
         self.ua_generator = UserAgent()
+        self.cookies = cookies
 
     def parser(self, res):
         def parse_week_str(week_str):
@@ -66,7 +66,7 @@ class YNUGraduateClassScheduleResolver(ClassScheduleResolver):
             "Accept-Encoding": "gzip, deflate, br",
             "Host": "yjsxk.ynu.edu.cn",
             "Referer": "https://yjsxk.ynu.edu.cn/yjsxkapp/sys/xsxkapp/course.html",
-            "Cookie": "...",
+            "Cookie": self.cookies,
             "User-Agent": self.ua_generator.chrome
         }
         return requests.get(api, params=params, headers=headers, verify=False).json()

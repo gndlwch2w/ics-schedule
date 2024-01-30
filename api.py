@@ -4,9 +4,9 @@ from uuid import uuid4
 from icalendar import Calendar, Event, vDatetime, Alarm
 
 __all__ = [
-    'ClassScheduleResolver',
-    'ICSClassScheduleWriter',
-    'ICSClassScheduleGenerator'
+    "ClassScheduleResolver",
+    "ICSClassScheduleWriter",
+    "ICSClassScheduleGenerator"
 ]
 
 class ClassScheduleResolver:
