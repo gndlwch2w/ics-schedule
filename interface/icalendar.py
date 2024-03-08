@@ -5,15 +5,9 @@ import uuid
 import getpass
 from datetime import datetime
 from icalendar import Calendar, Event, vDatetime, vText, Alarm
-from icalendar.cal import Component
+from utils import str_timerify, ics_prettify
 
 __all__ = ['iCalendar', 'iCalendarImpl']
-
-def timerify(time: str, time_format: str) -> datetime:
-    return datetime.strptime(time, time_format)
-
-def prettify(component: Component) -> str:
-    return component.to_ical().decode('utf-8').replace('\r\n', '\n').strip()
 
 class iCalendar(ABC):
     """iCalendar 事件生成工具"""
@@ -63,7 +57,7 @@ class iCalendar(ABC):
             fp.write(self.calendar.to_ical())
 
 class iCalendarImpl(iCalendar):
-    def __init__(self, author, name, description, timezone=None, time_format=None):
+    def __init__(self, author=None, name=None, description=None, timezone=None, time_format=None):
         super(iCalendarImpl, self).__init__(author, name, description, timezone, time_format)
         self.timezone = pytz.timezone(self.timezone)
 
@@ -74,14 +68,14 @@ class iCalendarImpl(iCalendar):
         event['DTSTAMP'] = vDatetime(datetime.now(self.timezone))
         # 事件开始的日期和时间
         if isinstance(start_time, str):
-            start_time = timerify(start_time, self.time_format)
+            start_time = str_timerify(start_time, self.time_format)
         event['DTSTART'] = vDatetime(start_time.astimezone(self.timezone))
         # 事件结束的日期和时间
         if isinstance(end_time, str):
-            end_time = timerify(end_time, self.time_format)
+            end_time = str_timerify(end_time, self.time_format)
         event['DTEND'] = vDatetime(end_time.astimezone(self.timezone))
         # 事件的唯一标识符，用于确保事件的唯一性
-        event['UID'] = f'{prettify(event["DTSTAMP"])}-{uuid.uuid4().hex}@{self.author}'
+        event['UID'] = f'{ics_prettify(event["DTSTAMP"])}-{uuid.uuid4().hex}@{self.author}'
         # 事件的状态，如 CONFIRMED（已确认）、TENTATIVE（暂定）或 CANCELLED（已取消）
         event['STATUS'] = 'CONFIRMED'
         # 事件的摘要或标题
@@ -99,17 +93,17 @@ class iCalendarImpl(iCalendar):
             alarm = Alarm()
             # 指定 Alarm 何时触发，指定触发时间的绝对值（具体的日期和时间）
             if isinstance(reminder_time, str):
-                reminder_time = timerify(reminder_time, self.time_format)
+                reminder_time = str_timerify(reminder_time, self.time_format)
             alarm['TRIGGER;VALUE=DATE-TIME'] = vDatetime(reminder_time.astimezone(self.timezone))
             # 指定 Alarm 的动作类型，如 AUDIO（播放声音）, DISPLAY（显示消息），EMAIL（发送电子邮件）等
             alarm['ACTION'] = reminder_type
             # 对 Alarm 的描述，显示在提醒界面上
-            alarm['DESCRIPTION'] = reminder_text.format({
-                'event_name': repr(event_name),
-                'start_time': repr(start_time),
-                'end_time': repr(end_time),
-                'description': repr(description),
-                'location': repr(location)
+            alarm['DESCRIPTION'] = reminder_text.format_map({
+                'event_name': str(event_name),
+                'start_time': str(start_time),
+                'end_time': str(end_time),
+                'description': str(description),
+                'location': str(location)
             })
             event.add_component(alarm)
         self.calendar.add_component(event)

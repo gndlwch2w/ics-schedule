@@ -1,7 +1,11 @@
 from abc import ABC
-from resolver import ScheduleResolver, iCalendarScheduleGenerator
+from interface.resolver import ScheduleResolver
+from interface.igenerator import iCalendarScheduleGenerator
 
-__all__ = ['TableScheduleResolver', 'TableCalendarScheduleGeneratorImpl']
+__all__ = [
+    'TableScheduleResolver',
+    'TableCalendarScheduleGeneratorImpl'
+]
 
 class TableScheduleResolver(ScheduleResolver, ABC):
     """表日程解析器

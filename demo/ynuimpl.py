@@ -5,10 +5,16 @@ import datetime
 import requests
 from fake_useragent import UserAgent
 import pandas as pd
-from course import CourseScheduleResolver
-from table import TableScheduleResolver
+import re
+from demo.curricular import CourseScheduleResolver
+from demo.tabular import TableScheduleResolver
+from utils import time_strify
 
-__all__ = ['YunnanUniversityGraduateCourseScheduleResolver', 'GroupReportScheduleResolver']
+__all__ = [
+    'YunnanUniversityGraduateCourseScheduleResolver',
+    'GroupReportScheduleResolver',
+    'DutyScheduleResolver'
+]
 
 class YunnanUniversityGraduateCourseScheduleResolver(CourseScheduleResolver):
     """云南大学研究生课程表解析器"""
@@ -17,9 +23,21 @@ class YunnanUniversityGraduateCourseScheduleResolver(CourseScheduleResolver):
         self.cookies = cookies
 
     def parser(self, resource):
-        def parse_week_str(week_str: str):
-            s, t = week_str[:-1].split("-")
-            return list(range(int(s), int(t) + 1))
+        def parse_week_str(week_str):
+            # 10-18周
+            if re.match('([0-9]+)-([0-9]+)周', week_str):
+                s, t = week_str[:-1].split('-')
+                return list(range(int(s), int(t) + 1))
+            # 1,3,5-18周
+            if ',' in week_str:
+                s, t = week_str[:-1].split('-')
+                r = [int(e) for e in s.split(',')]
+                r.extend(list(range(r[-1] + 1, int(t) + 1)))
+                return r
+            # 3周
+            if re.match('([0-9]+)周', week_str):
+                return [int(week_str[:-1])]
+            raise ValueError(f'Invalid week {week_str}')
 
         # 解析课程信息
         course_info = {}
@@ -85,10 +103,8 @@ def read_table(filename: str, **kwargs) -> pd.DataFrame:
         return pd.read_excel(filename, **kwargs)
     raise ValueError(f'Unsupported file type {os.path.splitext(filename)[1]}')
 
-def strify(time: datetime.datetime, time_format: str = '%Y-%m-%d %H:%M:%S') -> str:
-    return time.strftime(time_format)
-
 class GroupReportScheduleResolver(TableScheduleResolver):
+    """组会日程解析器 @春季学期组会安排.xlsx"""
     def __init__(self, filename):
         super(GroupReportScheduleResolver, self).__init__()
         self.filename = filename
@@ -97,13 +113,47 @@ class GroupReportScheduleResolver(TableScheduleResolver):
         schedule = []
         for _, row in resource.iterrows():
             schedule.append({
-                'name': row['组会/讨论内容'],
-                'start_time': strify(row['组会时间'] + datetime.timedelta(hours=14)),
-                'end_time': strify(row['组会时间'] + datetime.timedelta(hours=16)),
-                'reminder_time': strify(row['组会时间'] - datetime.timedelta(hours=2)),
-                'description': f'组会报告/讨论人员：{row["组会报告/讨论人员"]}, 主持人：{row["主持人"]}, 组会形式：{row["组会形式"]}',
+                'name': row['组会/讨论内容'].strip(),
+                'start_time': time_strify(row['组会时间'] + datetime.timedelta(hours=14)),
+                'end_time': time_strify(row['组会时间'] + datetime.timedelta(hours=16)),
+                'reminder_time': time_strify(row['组会时间'] - datetime.timedelta(hours=2)),
+                'description': f'人员：{row["组会报告/讨论人员"].strip()}, 主持：{row["主持人"].strip()}, '
+                               f'形式：{row["组会形式"].strip()}',
                 'location': '暂定',
             })
+        return schedule
+
+    def provider(self):
+        return read_table(self.filename)
+
+class DutyScheduleResolver(TableScheduleResolver):
+    """值班日程解析器 @值班表.xlsx"""
+    def __init__(self, filename, name):
+        super(DutyScheduleResolver, self).__init__()
+        self.filename = filename
+        self.name = name
+
+    def parser(self, resource: pd.DataFrame):
+        schedule = []
+        begin_delta = {
+            0: datetime.timedelta(hours=8, minutes=30),
+            1: datetime.timedelta(hours=14),
+            2: datetime.timedelta(hours=19),
+        }
+        duration_delta = datetime.timedelta(hours=3, minutes=30)
+        reminder_delta = datetime.timedelta(hours=2)
+        for _, row in resource.iterrows():
+            for i in [i for i, e in enumerate(row['值班人员'].split())
+                      if e.strip() == self.name]:
+                start_time = row['日期'].to_pydatetime() + begin_delta[i]
+                schedule.append({
+                    'name': '实验室值班',
+                    'start_time': start_time,
+                    'end_time': start_time + duration_delta,
+                    'reminder_time': start_time - reminder_delta,
+                    'description': row['值班人员'],
+                    'location': '1506',
+                })
         return schedule
 
     def provider(self):

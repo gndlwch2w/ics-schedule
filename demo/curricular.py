@@ -1,7 +1,9 @@
 from __future__ import annotations
 from abc import ABC
 import datetime
-from resolver import ScheduleResolver, iCalendarScheduleGenerator
+from interface.resolver import ScheduleResolver
+from interface.igenerator import iCalendarScheduleGenerator
+from interface.icalendar import iCalendarImpl
 
 __all__ = [
     'CourseScheduleResolver',
