@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>日历汇集 · Calendar Hub</title><link rel="stylesheet" href="/style.css"><script src="/app.js" defer></script></head>
+<body>
+<aside><a class="brand" href="/">◈ <span>日历汇集<small>CALENDAR HUB</small></span></a><p class="eyebrow">订阅项目</p><nav id="projects" aria-label="订阅项目"></nav><button id="new-project" class="new-project">＋ 新建订阅</button><p class="eyebrow">当前项目 · 信息渠道</p><button id="all-source" class="nav active">▦　全部日程 <span id="total">0</span></button><nav id="sources" aria-label="日历渠道"></nav><div class="aside-bottom"><span class="dot"></span> 本地工作空间<small>让分散的日程，有序相遇。</small></div></aside>
+<main><header><div class="breadcrumb">工作空间 <span>/</span> 日程管理</div><span class="local">● 本地编辑 · GitHub 发布</span></header>
+<section class="heading"><div><p class="eyebrow">YOUR TIME, CONNECTED</p><h1 id="page-title">所有日程，一处管理。</h1><p id="page-description">汇集每个渠道的重要时刻，订阅一份井然有序的日历。</p></div><button id="new-event" class="primary">＋ 新建日程</button></section>
+<section class="stats"><article><span>日程总数</span><strong id="stat-events">0</strong><small>当前订阅的事件与重复系列</small></article><article><span>已连接渠道</span><strong id="stat-sources">1</strong><small>统一来源，灵活扩展</small></article><article class="subscription"><div class="publish-heading"><span>GitHub 订阅</span><span id="publish-status" class="badge">未发布</span></div><h3 id="publish-summary">本地安排，发布后订阅</h3><div><button id="publish-settings">发布设置</button><button id="publish-project" class="primary">发布</button><button id="copy-url" disabled>复制订阅链接</button><a id="download" href="#" download>下载 ICS ↓</a></div></article></section>
+<section id="plugin-panel" hidden><h2>渠道设置</h2><p id="plugin-description"></p><form id="plugin-form"><div id="plugin-fields" class="form-grid"></div><button class="primary" type="submit">保存配置并同步</button></form></section>
+<section class="schedule"><div class="toolbar"><div><h2>日程列表 <span id="list-count">0</span></h2><p>给每一段时间，清晰的安排。</p></div><label class="search">⌕ <input id="search" type="search" placeholder="搜索标题、地点或描述" aria-label="搜索日程"></label></div><div id="events"></div></section>
+<footer><span>CALENDAR HUB / 把时间留给重要的事</span><span id="updated">等待第一次安排</span></footer></main>
+<dialog id="project-dialog" aria-labelledby="project-dialog-title"><form id="project-form">
+<div class="dialog-heading"><div><p class="eyebrow">ONE PROJECT, ONE SUBSCRIPTION</p><h2 id="project-dialog-title">新建订阅项目</h2></div><button type="button" data-close="project-dialog" aria-label="关闭">×</button></div>
+<div class="form-grid"><label class="wide">项目名称<input name="name" required maxlength="100" placeholder="例如：工作日程、课程表、个人安排"></label><p class="wide form-note">每个项目拥有独立日程、渠道配置、ICS 文件和 GitHub 订阅地址。</p></div><p class="form-error" role="alert"></p><div class="dialog-actions"><button type="button" data-close="project-dialog">取消</button><button type="submit" class="primary">创建项目</button></div></form></dialog>
+<dialog id="publish-dialog" aria-labelledby="publish-dialog-title"><form id="publish-form">
+<div class="dialog-heading"><div><p class="eyebrow">PUBLISH YOUR SUBSCRIPTION</p><h2 id="publish-dialog-title">项目与发布设置</h2></div><button type="button" data-close="publish-dialog" aria-label="关闭">×</button></div>
+<div class="form-grid"><label class="wide">项目名称<input name="name" required maxlength="100"></label>
+<label class="wide">GitHub 公开仓库<input name="repository" required placeholder="owner/repository"><small>仓库须已存在并为公开仓库，以便日历客户端读取订阅。</small></label>
+<label>现有分支<input name="branch" required placeholder="main"></label><label>Git 认证方式<select name="transport"><option value="ssh">SSH · 使用本机密钥</option><option value="https">HTTPS · 使用本机 Git 凭据</option></select></label>
+<label class="wide">仓库中的 ICS 文件路径<input name="path" required placeholder="subscription/work.ics"><small>不同项目使用不同路径；重新发布会更新同一文件。修改路径会产生新的订阅地址。</small></label>
+<div class="wide publish-preview"><span>发布后的订阅地址</span><output id="publish-url-preview"></output></div>
+<p class="wide form-note">网页仅在本机运行。保存设置不会上传；点击“发布到 GitHub”才会提交当前项目的 ICS。请先在终端配置好所选 Git 认证。公开订阅中包含本项目全部事件（包括标记为私密的事件）。</p>
+<p id="publish-history" class="wide form-note"></p></div>
+<p class="form-error" role="alert"></p><div class="dialog-actions"><button type="button" data-close="publish-dialog">取消</button><button type="submit" class="primary">保存设置</button></div></form></dialog>
+<dialog id="event-dialog"><form id="event-form"><div class="dialog-heading"><div><p class="eyebrow">MAKE TIME FOR WHAT MATTERS</p><h2 id="dialog-title">新建日程</h2></div><button type="button" id="close-dialog" aria-label="关闭">×</button></div><div class="form-grid">
+<label class="wide">日程标题 <input name="title" required maxlength="300" placeholder="接下来有什么安排？"></label>
+<label class="wide checkbox"><input name="all_day" type="checkbox"> 全天事件 <small>结束日期不包含在事件内</small></label>
+<label>开始 <input name="start" type="datetime-local" required></label><label>结束 <input name="end" type="datetime-local" required></label>
+<label>时区 <input name="timezone" value="Asia/Shanghai" list="timezones" required><datalist id="timezones"><option>Asia/Shanghai</option><option>Asia/Tokyo</option><option>Europe/London</option><option>America/New_York</option><option>UTC</option></datalist></label><label>地点 <input name="location" placeholder="会议室、地址或线上"></label>
+<label class="wide">描述 <textarea name="description" rows="3" placeholder="添加议程、备注或更多细节…"></textarea></label>
+<label>重复 <select name="frequency"><option value="">不重复</option><option value="DAILY">每天</option><option value="WEEKLY">每周</option><option value="MONTHLY">每月</option><option value="YEARLY">每年</option></select></label><label>提前提醒（分钟，逗号分隔）<input name="reminders" placeholder="例如：10, 30；留空不提醒"></label>
+<div id="recurrence" class="wide form-grid" hidden><label>每隔几个周期 <input name="interval" type="number" min="1" max="365" value="1"></label><label>重复次数 <input name="count" type="number" min="1" max="10000" placeholder="留空表示不限制"></label><label>或截止日期 <input name="until" type="date"></label><fieldset id="weekdays" class="wide"><legend>每周重复日（不选则沿用开始日）</legend></fieldset></div>
+<details class="wide"><summary>更多设置 · 链接、分类与可见性</summary><div class="form-grid"><label class="wide">相关链接 <input name="url" type="url" placeholder="https://"></label><label>分类（逗号分隔）<input name="categories" placeholder="工作, 个人"></label><label>状态 <select name="status"><option value="CONFIRMED">已确认</option><option value="TENTATIVE">暂定</option><option value="CANCELLED">已取消</option></select></label><label>可见性 <select name="privacy"><option value="PUBLIC">公开</option><option value="PRIVATE">私密</option><option value="CONFIDENTIAL">机密</option></select><small>日历属性标记，不限制订阅文件访问</small></label><label>时间占用 <select name="availability"><option value="OPAQUE">忙碌</option><option value="TRANSPARENT">空闲</option></select></label></div></details>
+</div><p id="form-error" role="alert"></p><div class="dialog-actions"><button type="button" id="cancel-dialog">取消</button><button type="submit" class="primary">保存日程</button></div></form></dialog>
+<div id="toast" role="status" hidden></div>
+</body></html>
