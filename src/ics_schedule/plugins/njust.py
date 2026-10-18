@@ -111,6 +111,24 @@ def _date(value):
     return day
 
 
+def _reminders(value):
+    if value in (None, ""):
+        raw = ""
+    elif isinstance(value, str):
+        raw = value.strip()
+    else:
+        raise ScheduleError("整体提醒必须为文本")
+    if not raw:
+        return []
+    parts = [part.strip() for part in re.split(r"[,，]", raw)]
+    if len(parts) > 5 or any(not re.fullmatch(r"\d+", part) for part in parts):
+        raise ScheduleError("整体提醒请填写最多 5 个、以逗号分隔的非负整数")
+    reminders = sorted(set(int(part) for part in parts))
+    if any(minutes > 525600 for minutes in reminders):
+        raise ScheduleError("整体提醒时间须为 0–525600 分钟")
+    return reminders
+
+
 def _times(config):
     raw = config.get("period_times", "{}") or "{}"
     try:
@@ -728,9 +746,13 @@ class NJUSTGraduateWebSource(CalendarSource):
          "placeholder": "可粘贴 Cookie 值，也可粘贴以 GET 开头的完整请求头",
          "help": "会提取 Cookie 与必要的浏览器请求头，用于本次请求南京理工大学教务系统；不会写入配置、日志或 ICS。",
          "transient": True},
+        {"name": "reminders", "label": "整体提醒（分钟，逗号分隔）", "type": "text",
+         "placeholder": "例如：30；留空不提醒",
+         "help": "应用于本次同步导入的全部课程；填写 0 表示上课时提醒，最多 5 个时间。"},
     ]
 
     def collect(self, config, records):
+        reminders = _reminders(config.get("reminders", ""))
         course_url = (config.get("course_url") or "").strip()
         supplied_cookie = (config.get("cookie") or "").strip()
         raw_cookie, copied_headers = _request_profile(supplied_cookie)
@@ -828,6 +850,8 @@ class NJUSTGraduateWebSource(CalendarSource):
                     events[event["id"]] = event
             if not events:
                 raise ScheduleError("未解析到任何课程，为避免删除现有课程，本次同步已取消")
+            for event in events.values():
+                event["reminders"] = reminders
             return sorted(events.values(), key=lambda e: (e["start"], e["title"]))
         finally:
             session.close()

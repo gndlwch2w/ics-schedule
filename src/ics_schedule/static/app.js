@@ -65,7 +65,8 @@ function renderEvents() {
     const row = el('article', undefined, 'event-row'), tile = el('div', undefined, 'date-tile'); tile.append(el('small', event.start.slice(0,7)), el('strong', event.start.slice(8,10)));
     const content = el('div', undefined, 'event-content'); content.append(el('h3', event.title));
     const time = event.all_day ? `${event.start} → ${event.end}（全天，结束日不含）` : `${event.start.replace('T',' ')} → ${event.end.replace('T',' ')} · ${event.timezone}`;
-    content.append(el('p', time), el('p', event.location || '未设置地点'));
+    const reminders = event.reminders?.length ? event.reminders.map(minutes => minutes ? `提前 ${minutes} 分钟` : '开始时').join('、') : '不提醒';
+    content.append(el('p', time), el('p', `${event.location || '未设置地点'} · ${reminders}`));
     const tags = el('div'); tags.append(el('span', state.sources.find(s => s.id === event.source)?.title || event.source, 'badge'));
     if (event.frequency) tags.append(el('span', '重复日程', 'badge'));
     if (event.status !== 'CONFIRMED') tags.append(el('span', event.status === 'CANCELLED' ? '已取消' : '暂定', 'badge'));

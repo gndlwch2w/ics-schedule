@@ -174,6 +174,14 @@ class TestNJUSTWeb(unittest.TestCase):
         self.assertEqual(njust.discover_period_times(html),
                          {1: ('08:00', '08:45'), 2: ('08:55', '09:40')})
 
+    def test_parse_course_reminders(self):
+        self.assertEqual(njust._reminders('30, 0，30'), [0, 30])
+        self.assertEqual(njust._reminders(''), [])
+        with self.assertRaises(njust.ScheduleError):
+            njust._reminders('before class')
+        with self.assertRaises(njust.ScheduleError):
+            njust._reminders('1,2,3,4,5,6')
+
     def test_collect_from_form_fields_calendar_link_and_cookie_redaction(self):
         calls = []
         def fake_fetch(session, method, url, path, **kwargs):
@@ -186,10 +194,12 @@ class TestNJUSTWeb(unittest.TestCase):
                 '<table><tr><td>第1节</td><td>08:00-08:45</td></tr>' +
                 '<tr><td>第2节</td><td>08:55-09:40</td></tr></table></form>')
         config = {'course_url': 'https://gsmis.njust.edu.cn/Gstudent/Course/StuCourseQuery.aspx?EID=LOCAL_SECRET',
-                  'cookie': 'ASP.NET_SessionId=FAKE_TEST_TOKEN; LoginType=1'}
+                  'cookie': 'ASP.NET_SessionId=FAKE_TEST_TOKEN; LoginType=1',
+                  'reminders': '30, 0'}
         with patch.object(njust, '_fetch', side_effect=fake_fetch):
             items = njust.NJUSTGraduateWebSource().collect(config, [])
         self.assertEqual([e['start'] for e in items], ['2026-09-08T08:00', '2026-09-15T08:00'])
+        self.assertTrue(all(e['reminders'] == [0, 30] for e in items))
         self.assertEqual([(call[0],call[1]) for call in calls],
                          [('GET', njust.COURSE_PATH), ('GET', njust.TERM_PATH), ('POST', njust.COURSE_PATH)])
         self.assertNotIn('FAKE_TEST_TOKEN', str(items))
@@ -229,8 +239,9 @@ class TestNJUSTWeb(unittest.TestCase):
 
     def test_input_only_two_required_fields(self):
         fields = njust.NJUSTGraduateWebSource.fields
-        self.assertEqual([f['name'] for f in fields], ['course_url', 'cookie'])
-        self.assertTrue(all(f['transient'] and f['required'] for f in fields))
+        self.assertEqual([f['name'] for f in fields], ['course_url', 'cookie', 'reminders'])
+        self.assertTrue(all(f['transient'] and f['required'] for f in fields[:2]))
+        self.assertFalse(fields[2].get('transient', False))
 
     def test_cookie_value_or_complete_request_headers(self):
         value = 'ASP.NET_SessionId=TOKEN; LoginType=1'
