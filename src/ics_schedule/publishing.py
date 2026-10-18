@@ -67,17 +67,17 @@ class GitHubPublisher:
         except (URLError, ValueError) as exc:
             raise PublishError('无法确认公开仓库，请检查仓库名称、网络和 GitHub API 访问限制') from exc
 
-    def git(self, args, cwd=None):
+    def git(self, args, cwd=None, binary=False):
         env = dict(os.environ, GIT_TERMINAL_PROMPT='0', GCM_INTERACTIVE='Never',
                    GIT_SSH_COMMAND='ssh -o BatchMode=yes -o StrictHostKeyChecking=yes')
         try:
-            result = subprocess.run(['git', '-c', 'core.hooksPath=/dev/null', '-c', 'commit.gpgsign=false', *args], cwd=cwd, env=env, capture_output=True, text=True, timeout=90)
+            result = subprocess.run(['git', '-c', 'core.hooksPath=/dev/null', '-c', 'commit.gpgsign=false', *args], cwd=cwd, env=env, capture_output=True, text=not binary, timeout=90)
         except (OSError, subprocess.TimeoutExpired) as exc:
             raise PublishError('Git 不可用或操作超时，请检查 Git 安装和网络后重试') from exc
         if result.returncode:
             # Never return credential-helper output, URLs containing credentials, or environment data.
             raise PublishError('Git 操作失败。请检查仓库/分支、SSH 或 HTTPS 凭据及推送权限；若远端刚有更新，请重试。不会强制覆盖远端。')
-        return result.stdout.strip()
+        return result.stdout if binary else result.stdout.strip()
 
     def publish(self, settings, content, previous=None):
         settings = validate_settings(settings)
@@ -93,13 +93,17 @@ class GitHubPublisher:
                     raise PublishError('发布路径包含符号链接，请更换目标路径')
             if target.exists() and not target.is_file():
                 raise PublishError('目标路径不是普通文件')
-            existing = target.read_bytes() if target.exists() else None
+            existing = self.git(['show', 'HEAD:' + settings['path']], checkout, binary=True) if target.exists() else None
             if existing != content:
                 if existing is not None and (not previous or digest(existing) != previous['digest']):
                     raise PublishError('目标文件已存在或被外部修改。为避免覆盖，请使用新的文件路径，或恢复到上次发布版本后重试。')
                 if existing is None and previous:
                     raise PublishError('上次发布的远端文件已被删除，请恢复文件或更换发布路径')
                 target.parent.mkdir(parents=True, exist_ok=True)
+                # Keep RFC 5545 CRLF bytes intact, regardless of repository text filters.
+                attributes = checkout / '.git/info/attributes'
+                attributes.parent.mkdir(parents=True, exist_ok=True)
+                attributes.write_text('* -text -filter -ident -working-tree-encoding\n')
                 target.write_bytes(content)
                 self.git(['add', '-f', '--', settings['path']], checkout)
                 self.git(['-c', 'user.name=Calendar Hub', '-c', 'user.email=calendar-hub@users.noreply.github.com',

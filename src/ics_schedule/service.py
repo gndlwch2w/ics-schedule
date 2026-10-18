@@ -115,5 +115,9 @@ class CalendarService:
                 else:
                     records.append(self.decorate(raw, source_id, event_id, previous))
             state["events"] = [e for e in state["events"] if e["source"] != source_id] + records
-            state["configs"][source_id] = config
+            persistent = source.persistent_config(config)
+            if persistent:
+                state["configs"][source_id] = persistent
+            else:
+                state["configs"].pop(source_id, None)
             self.commit(state)

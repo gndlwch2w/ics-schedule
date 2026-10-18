@@ -14,6 +14,23 @@ class CalendarSource(ABC):
         return {"id": self.id, "title": self.title, "description": self.description,
                 "fields": self.fields, "editable": self.id == "manual"}
 
+    def persistent_config(self, config):
+        """Return the safe subset that may be written to the project JSON.
+
+        Passwords and explicitly transient fields are request-scoped.  This is
+        intentionally driven by the same declarative field metadata used by the
+        UI so a new plugin cannot accidentally persist a credential merely by
+        choosing a password control.
+        """
+        persistent = {
+            field.get("name")
+            for field in self.fields
+            if field.get("name")
+            and field.get("type") != "password"
+            and not field.get("transient")
+        }
+        return {key: value for key, value in config.items() if key in persistent}
+
     @abstractmethod
     def collect(self, config, records):
         """Return event dicts; external sources MUST include a stable unique `id`."""
@@ -22,7 +39,11 @@ class CalendarSource(ABC):
 
 def load_sources(specs=()):
     from .manual import ManualSource
-    sources = [ManualSource()]
+    from .njust import NJUSTGraduateWebSource
+
+    # Sources shipped by this project are available without requiring callers
+    # to know a Python import path or add a special command-line flag.
+    sources = [ManualSource(), NJUSTGraduateWebSource()]
     for spec in specs:
         module, name = spec.split(":", 1)
         sources.append(getattr(import_module(module), name)())

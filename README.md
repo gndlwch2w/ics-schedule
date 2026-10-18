@@ -52,6 +52,19 @@ python3 -m venv .venv
 
 全天事件的结束日期**不包含在内**，例如 10 月 19 日单日事件设置开始 19 日、结束 20 日。编辑事件保留 UID 并递增 SEQUENCE；重复事件编辑作用于整个系列，暂不支持只改一次。时间使用 IANA 时区，ICS 包含 VTIMEZONE；不存在的夏令时时间会被拒绝，回拨重叠时间采用第一次出现。
 
+## 南京理工大学研究生课表
+
+该渠道已内置，无需传入 `--plugin`：
+
+1. 在 Chrome 中登录研究生教务系统并打开“学期课表信息查询”。
+2. 打开开发者工具的 Network 面板并刷新页面，选中 `StuCourseQuery.aspx` 主文档请求。
+3. 复制当前课表 URL；再复制请求的 `Cookie` 值，或直接复制包含一行 `Cookie:` 的完整请求头。
+4. 在对应订阅项目中选择“南京理工大学研究生课表”，粘贴后点击“保存配置并同步”。
+
+页面会自动寻找“教学日历”，据此换算教学周日期，并读取网页列出的每节课时间。相邻节次中课程、教师和教室相同的内容会合并成一条连续日程。后续课表变化时，在同一项目中粘贴最新请求头并重新同步；其他订阅项目不会受影响。
+
+教务系统的防护 Cookie 可能在页面刷新后立即轮换。若同步提示 HTTP 412，请从刚刷新成功的主文档请求重新复制 Cookie。课表 URL、Cookie 和标记为 `transient` 的字段只用于当次同步，不写入项目 JSON、日志或 ICS；同步失败也会保留该渠道原有日程。
+
 ## 本地文件与迁移
 
 ```text
@@ -102,7 +115,7 @@ class ExampleSource(CalendarSource):
 
 可重复传入 `--plugin MODULE:CLASS`。插件是受信任的本地 Python 代码。id 应以小写字母开头，仅包含小写字母、数字、下划线和短横线，不能与 `all/manual` 或其他插件重复。
 
-支持表单字段：`text/password/number/date/textarea/select/checkbox`；可选 `default/required/placeholder/help`，下拉选项格式为 `options: [{"value": "...", "label": "..."}]`。配置业务校验由插件负责，配置仅保存在本机，不通过状态 API 返回。
+支持表单字段：`text/password/number/date/textarea/select/checkbox`；可选 `default/required/placeholder/help/transient`，下拉选项格式为 `options: [{"value": "...", "label": "..."}]`。配置业务校验由插件负责，配置仅保存在本机，不通过状态 API 返回。`password` 和 `transient` 字段只用于当前请求，不会保存。
 
 采集返回当前项目中该渠道的完整快照。事件必须具有来源内稳定且唯一的 `id`；缺失事件被移除，空列表清空当前渠道。采集或校验失败保留原数据；内容未变不增加事件版本。插件日程只读，通过“保存配置并同步”刷新，暂不支持后台定时采集。
 

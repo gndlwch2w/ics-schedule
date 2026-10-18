@@ -150,6 +150,19 @@ class GitPublishTests(unittest.TestCase):
         with self.assertRaises(PublishError):
             self.publisher.publish(self.settings, b'using stale base', first)
 
+    def test_crlf_preserved_with_repository_attributes(self):
+        (self.seed / '.gitattributes').write_text('*.ics text eol=lf\n')
+        self.git('add', '.gitattributes', cwd=self.seed)
+        self.git('commit', '-m', 'Normalize text fixture', cwd=self.seed)
+        self.git('push', 'origin', 'main', cwd=self.seed)
+        content = b'BEGIN:VCALENDAR\r\nVERSION:2.0\r\nEND:VCALENDAR\r\n'
+        first = self.publisher.publish(self.settings, content)
+        stored = subprocess.check_output(['git', '--git-dir', str(self.remote), 'show', 'main:subscription/a.ics'])
+        self.assertEqual(stored, content)
+        updated = content.replace(b'END:VCALENDAR', b'X-WR-CALNAME:Updated\r\nEND:VCALENDAR')
+        second = self.publisher.publish(self.settings, updated, first)
+        self.assertEqual(second['digest'], digest(updated))
+
     def test_reject_symlink_path(self):
         (self.seed / 'linked').symlink_to(self.root, target_is_directory=True)
         self.git('add', 'linked', cwd=self.seed)
